@@ -90,10 +90,10 @@ const listMessages = createServerFn(
 
     let cursor = messages[start]?.id;
 
-    // SELECT lead(id, $page_size) AS next FROM ordered_filtered_messages LIMIT 1;
+    // SELECT lead(id, $page_size) OVER () AS next FROM ordered_filtered_messages LIMIT 1;
     let next = messages[end]?.id ?? null;
 
-    // SELECT lag(id, 1) AS previous FROM ordered_filtered_messages LIMIT 1;
+    // SELECT lag(id, 1) OVER () AS previous FROM ordered_filtered_messages LIMIT 1;
     let previous = messages[start - 1]?.id ?? null;
 
     messages = messages.slice(start, end);
