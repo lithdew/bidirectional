@@ -186,6 +186,7 @@ function Page() {
 
   const query = useSuspenseInfiniteQuery({
     ...listMessagesQuery({ queryClient, cursor }),
+    maxPages: 3,
     staleTime: Infinity,
     refetchOnMount: false,
     refetchOnReconnect: false,
