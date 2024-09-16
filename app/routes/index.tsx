@@ -29,10 +29,7 @@ export const listMessagesQuery = ({
 >) => {
   const queryKey = ["messages", input] as const;
 
-  type PageParam = Pick<
-    Parameters<typeof listMessagesFn>[0],
-    "cursor" | "direction"
-  >;
+  type PageParam = Parameters<typeof listMessagesFn>[0]["cursor"];
 
   return infiniteQueryOptions({
     queryKey: queryKey,
@@ -44,10 +41,9 @@ export const listMessagesQuery = ({
 
       const existingData = allData?.pages.find(
         (_, index) =>
-          allData?.pageParams[index]?.cursor?.id === pageParam.cursor?.id &&
-          allData?.pageParams[index]?.cursor?.sentAt ===
-            pageParam.cursor?.sentAt &&
-          allData?.pageParams[index]?.direction === pageParam.direction,
+          allData?.pageParams[index]?.id === pageParam?.id &&
+          allData?.pageParams[index]?.sentAt === pageParam?.sentAt &&
+          allData?.pageParams[index]?.direction === pageParam?.direction,
       );
 
       if (existingData !== undefined && existingData.prev !== null) {
@@ -57,28 +53,16 @@ export const listMessagesQuery = ({
       const result = await listMessagesFn(
         {
           ...input,
-          direction: pageParam.direction,
-          cursor: pageParam.cursor ?? existingData?.cursor,
+          cursor: existingData?.cursor ?? pageParam ?? null,
         },
         { requestInit: { signal } },
       );
 
       return result;
     },
-    initialPageParam: { direction: "asc", cursor: input.cursor } as PageParam,
-    getNextPageParam: (lastPage) => {
-      if (lastPage.next === null) {
-        return;
-      }
-      return { direction: "asc" as const, cursor: lastPage.next };
-    },
-    getPreviousPageParam: (firstPage) => {
-      if (firstPage.prev === null) {
-        return;
-      }
-
-      return { direction: "desc" as const, cursor: firstPage.prev };
-    },
+    initialPageParam: input.cursor as PageParam,
+    getNextPageParam: (lastPage) => lastPage.next ?? undefined,
+    getPreviousPageParam: (firstPage) => firstPage.prev ?? undefined,
   });
 };
 
@@ -87,9 +71,11 @@ export const Route = createFileRoute("/")({
 });
 
 function Page() {
-  const [cursor, setCursor] = useState<
-    { sentAt: string; id: string } | undefined
-  >();
+  const [cursor, setCursor] = useState<{
+    direction: "asc";
+    sentAt: string;
+    id: string;
+  } | null>(null);
 
   const queryClient = useQueryClient();
 

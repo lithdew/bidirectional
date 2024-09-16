@@ -5,7 +5,7 @@ describe("dataset", () => {
   it("works", async () => {
     const result = await listMessages({
       direction: "asc",
-      cursor: undefined,
+      cursor: null,
     });
     expect(result.data.at(0)?.index).toEqual(999);
     expect(result.data.at(-1)?.index).toEqual(1000 - 20);

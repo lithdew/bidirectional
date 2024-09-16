@@ -24,8 +24,7 @@ export const createNewMessage = () => {
 };
 
 export const listMessages = async (input: {
-  direction: "desc" | "asc";
-  cursor?: { sentAt: string; id: string };
+  cursor: { direction: "desc" | "asc"; sentAt: string; id: string } | null;
 }) => {
   const LIMIT = 20;
 
@@ -44,12 +43,17 @@ export const listMessages = async (input: {
   });
 
   let start = 0;
-  let end = Math.min(start + LIMIT, messages.length);
+  let end = messages.length;
 
-  if (input.cursor !== undefined) {
-    const cursor = input.cursor;
+  let cursor: { direction: "desc" | "asc"; sentAt: string; id: string } | null =
+    input.cursor;
+  let next: { direction: "desc" | "asc"; sentAt: string; id: string } | null =
+    null;
+  let prev: { direction: "desc" | "asc"; sentAt: string; id: string } | null =
+    null;
 
-    switch (input.direction) {
+  if (input.cursor !== null) {
+    switch (input.cursor.direction) {
       case "asc": {
         for (start = start; start < messages.length; start++) {
           const message = messages[start];
@@ -57,9 +61,9 @@ export const listMessages = async (input: {
             break;
           }
           if (
-            new Date(message.sentAt) < new Date(cursor.sentAt) ||
-            (message.sentAt === cursor.sentAt &&
-              message.id.localeCompare(cursor.id) >= 0)
+            new Date(message.sentAt) < new Date(input.cursor.sentAt) ||
+            (message.sentAt === input.cursor.sentAt &&
+              message.id.localeCompare(input.cursor.id) >= 0)
           ) {
             break;
           }
@@ -77,9 +81,9 @@ export const listMessages = async (input: {
             break;
           }
           if (
-            new Date(message.sentAt) > new Date(cursor.sentAt) ||
-            (message.sentAt === cursor.sentAt &&
-              message.id.localeCompare(cursor.id) < 0)
+            new Date(message.sentAt) > new Date(input.cursor.sentAt) ||
+            (message.sentAt === input.cursor.sentAt &&
+              message.id.localeCompare(input.cursor.id) < 0)
           ) {
             break;
           }
@@ -91,27 +95,27 @@ export const listMessages = async (input: {
         break;
       }
     }
+  } else {
+    start = 0;
+    end = Math.min(start + LIMIT, messages.length);
   }
-
-  let cursor: { sentAt: string; id: string } | undefined = input.cursor;
-  let next: { sentAt: string; id: string } | null = null;
-  let prev: { sentAt: string; id: string } | null = null;
 
   const first = messages[start];
-  if (cursor === undefined && first !== undefined) {
-    cursor = { sentAt: first.sentAt, id: first.id };
+  if (cursor === null && first !== undefined) {
+    cursor = { direction: "asc", sentAt: first.sentAt, id: first.id };
   }
 
-  // SELECT lead(id, $page_size) OVER () AS next FROM ordered_filtered_messages LIMIT 1;
+  const lag = messages[start - 1];
   const lead = messages[end];
+
+  // SELECT lead(id, $page_size) OVER () AS next FROM ordered_filtered_messages LIMIT 1;
   if (lead !== undefined) {
-    next = { sentAt: lead.sentAt, id: lead.id };
+    next = { direction: "asc", sentAt: lead.sentAt, id: lead.id };
   }
 
   // SELECT id AS previous FROM ordered_filtered_messages LIMIT 1;
-  const lag = messages[start - 1];
   if (lag !== undefined && first !== undefined) {
-    prev = { sentAt: first.sentAt, id: first.id };
+    prev = { direction: "desc", sentAt: first.sentAt, id: first.id };
   }
 
   messages = messages.slice(start, end);
